@@ -2872,8 +2872,16 @@ Search::setVertexArrivals(Vertex *vertex,
     Path *prev_paths = graph_->paths(vertex);
     TagGroup *tag_group = findTagGroup(tag_bldr);
     if (tag_group == prev_tag_group) {
-      tag_bldr->copyPaths(tag_group, prev_paths);
-      requiredInvalid(vertex);
+      // Same tags, new arrivals. A required time depends on the fanout
+      // requireds (back-propagated by RequiredVisitor when they change) and
+      // on this vertex's arc delays (StaDelayCalcObserver::delayChangedFrom
+      // and checkDelayChangedTo invalidate it), not on the vertex's own
+      // arrival, so the previous requireds stay valid and no re-propagation
+      // is needed. The exception is an endpoint, whose required can depend
+      // on its data arrival (latch borrowing, crpr, data checks).
+      tag_bldr->copyPaths(tag_group, prev_paths, true);
+      if (isEndpoint(vertex))
+        requiredInvalid(vertex);
     }
     else {
       if (prev_tag_group) {
