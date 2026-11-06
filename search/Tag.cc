@@ -61,6 +61,7 @@ Tag::Tag(TagIndex index,
   path_ap_index_(path_ap_index)
 {
   findHash();
+  findMatchCmpHash(sta);
   if (states_) {
     FilterPath *filter = sta->search()->filter();
     for (ExceptionState *state : *states_) {
@@ -195,9 +196,11 @@ Tag::pathAnalysisPt(const StaState *sta) const
 }
 
 void
-Tag::setStates(ExceptionStateSet *states)
+Tag::setStates(ExceptionStateSet *states,
+               const StaState *sta)
 {
   states_ = states;
+  findMatchCmpHash(sta);
 }
 
 const ClockEdge *
@@ -271,6 +274,43 @@ Tag::findHash()
 
   // Finish match_hash_.
   hashIncr(match_hash_, clk_info_->isGenClkSrcPath());
+}
+
+// Exactly the fields Tag::matchCmp compares, so that
+// matchCmp(tag1, tag2) == 0 implies equal hashes (TagMatchMap relies on it).
+void
+Tag::findMatchCmpHash(const StaState *sta)
+{
+  size_t hash = hash_init_value;
+  hashIncr(hash, rf_index_);
+  hashIncr(hash, path_ap_index_);
+  const ClockEdge *clk_edge = clk_info_->clkEdge();
+  hashIncr(hash, clk_edge ? clk_edge->index() + 1 : 0);
+  hashIncr(hash, is_clk_);
+  hashIncr(hash, clk_info_->isGenClkSrcPath());
+  hashIncr(hash, is_segment_start_);
+  // stateCmp treats null and empty state sets as equal and compares the
+  // sets element-wise; a sum of the state hashes is order independent.
+  size_t states_hash = 0;
+  if (states_) {
+    for (ExceptionState *state : *states_)
+      states_hash += state->hash();
+  }
+  hashIncr(hash, states_hash);
+  match_cmp_hash_ = hash;
+  hashIncr(hash, clk_info_->crprClkVertexId(sta));
+  match_cmp_hash_crpr_ = hash;
+}
+
+size_t
+Tag::matchCmpHash(bool match_crpr_clk_pin,
+                  const StaState *sta) const
+{
+  if (match_crpr_clk_pin
+      && sta->crprActive())
+    return match_cmp_hash_crpr_;
+  else
+    return match_cmp_hash_;
 }
 
 size_t
