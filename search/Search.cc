@@ -1406,12 +1406,15 @@ void
 ArrivalVisitor::pruneCrprArrivals()
 {
   CheckCrpr *crpr = search_->checkCrpr();
-  PathIndexMap &path_index_map = tag_bldr_->pathIndexMap();
-  for (auto path_itr = path_index_map.cbegin(); path_itr != path_index_map.cend(); ) {
-    Tag *tag = path_itr->first;
-    size_t path_index = path_itr->second;
+  TagMatchMap &path_index_map = tag_bldr_->pathIndexMap();
+  // Erasing marks the entry (tag = nullptr) without moving the others.
+  const std::vector<TagMatchMap::Entry> &entries = path_index_map.entries();
+  for (size_t i = 0; i < entries.size(); i++) {
+    Tag *tag = entries[i].tag;
+    if (tag == nullptr)
+      continue;
+    size_t path_index = entries[i].path_index;
     const ClkInfo *clk_info = tag->clkInfo();
-    bool deleted_tag = false;
     if (!tag->isClock()
 	&& clk_info->hasCrprClkPin()) {
       PathAnalysisPt *path_ap = tag->pathAnalysisPt(this);
@@ -1437,13 +1440,10 @@ ArrivalVisitor::pruneCrprArrivals()
 	    == clk_info->crprClkPath(this)->minMax(this)) {
 	  debugPrint(debug_, "search", 3, "  pruned %s",
                      tag->to_string(this).c_str());
-          path_itr = path_index_map.erase(path_itr);
-          deleted_tag = true;
+          path_index_map.erase(tag);
 	}
       }
     }
-    if (!deleted_tag)
-      path_itr++;
   }
 }
 

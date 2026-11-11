@@ -78,7 +78,8 @@ public:
   PathAPIndex pathAPIndex() const { return path_ap_index_; }
   TagIndex index() const { return index_; }
   ExceptionStateSet *states() const { return states_; }
-  void setStates(ExceptionStateSet *states);
+  void setStates(ExceptionStateSet *states,
+                 const StaState *sta);
   bool isGenClkSrcPath() const;
   const Clock *genClkSrcPathClk(const StaState *sta) const;
   // Input delay at search startpoint (not propagated).
@@ -90,6 +91,11 @@ public:
 	      const StaState *sta) const;
   size_t matchHash(bool match_crpr_clk_pin,
                    const StaState *sta) const;
+  // Hash over exactly the fields matchCmp compares, with or without the
+  // crpr clock pin as matchCmp decides it (match_crpr_clk_pin && crprActive).
+  // Equal under matchCmp implies equal hash. Used by TagMatchMap lookups.
+  size_t matchCmpHash(bool match_crpr_clk_pin,
+                      const StaState *sta) const;
 
   static int cmp(const Tag *tag1,
 		 const Tag *tag2,
@@ -114,6 +120,7 @@ public:
 
 protected:
   void findHash();
+  void findMatchCmpHash(const StaState *sta);
 
   // Match tag clock edge, clock driver and exception states but not clk info.
   static bool match(const Tag *tag1,
@@ -132,6 +139,8 @@ private:
   ExceptionStateSet *states_;
   size_t hash_;
   size_t match_hash_;
+  size_t match_cmp_hash_;
+  size_t match_cmp_hash_crpr_;
   TagIndex index_;
   bool is_clk_:1;
   bool is_filter_:1;
