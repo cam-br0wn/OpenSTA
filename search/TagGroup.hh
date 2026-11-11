@@ -245,8 +245,13 @@ public:
                   TimingArc *prev_arc);
   void insertPath(const Path &path);
   TagMatchMap &pathIndexMap() { return path_index_map_; }
+  // Copy the builder's paths into tag_group's path array. With keep_required
+  // the required times already in paths are kept: for an unchanged tag group a
+  // required depends on the fanout requireds and this vertex's arc delays,
+  // which invalidate requireds on their own, not on this vertex's arrival.
   void copyPaths(TagGroup *tag_group,
-                 Path *paths);
+                 Path *paths,
+                 bool keep_required = false);
 
 protected:
   int tagMatchIndex();

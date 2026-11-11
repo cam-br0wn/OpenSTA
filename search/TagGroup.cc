@@ -497,14 +497,24 @@ TagGroupBldr::makePathIndexMap(const StaState *sta)
 
 void
 TagGroupBldr::copyPaths(TagGroup *tag_group,
-                        Path *paths)
+                        Path *paths,
+                        bool keep_required)
 {
   for (auto const [tag1, path_index1] : path_index_map_) {
     size_t path_index2;
     bool exists2;
     tag_group->pathIndex(tag1, path_index2, exists2);
-    if (exists2)
-      paths[path_index2] = paths_[path_index1];
+    if (exists2) {
+      if (keep_required) {
+        // The builder's paths carry the init required; keep the one found
+        // by the last required search instead of forcing a re-propagation.
+        Required required = paths[path_index2].required();
+        paths[path_index2] = paths_[path_index1];
+        paths[path_index2].setRequired(required);
+      }
+      else
+        paths[path_index2] = paths_[path_index1];
+    }
     else
       sta_->report()->critical(1351, "tag group missing tag");
   }
